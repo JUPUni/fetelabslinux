@@ -170,6 +170,16 @@ def default_cursor():
     d = HOME / ".icons" / "default"
     d.mkdir(parents=True, exist_ok=True)
     (d / "index.theme").write_text(f"[Icon Theme]\nName=Default\nInherits={CURSORS}\n")
+    # GNOME Shell loads cursors through libXcursor, which only searches
+    # ~/.icons, /usr/share/icons and /usr/share/pixmaps. Without this link the
+    # shell (taskbar, top bar, desktop) can't find a per-user cursor theme and
+    # draws a white square, while apps (which search ~/.local/share/icons) look fine.
+    link = HOME / ".icons" / CURSORS
+    src = DATA / "icons" / CURSORS
+    if src.is_dir() and not link.exists():
+        if link.is_symlink():
+            link.unlink()
+        link.symlink_to(src)
 
 
 def enable_user_theme():

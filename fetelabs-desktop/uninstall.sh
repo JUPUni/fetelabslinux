@@ -6,6 +6,9 @@ rm -f "$HOME/.config/systemd/user/fetelabs-desktop-guard.service" "$HOME/.config
 pkill -f "fetelabs-desktop guard" 2>/dev/null
 D="${XDG_DATA_HOME:-$HOME/.local/share}"
 rm -rf "$D"/themes/Fetelabs-Desktop{,-hdpi,-xhdpi} "$D"/icons/Fetelabs-Desktop{,-Cursors}
+# The link GNOME Shell needs to find the cursors, and the default cursor pointer.
+[ -L "$HOME/.icons/Fetelabs-Desktop-Cursors" ] && rm "$HOME/.icons/Fetelabs-Desktop-Cursors"
+grep -qs "Inherits=Fetelabs-Desktop-Cursors" "$HOME/.icons/default/index.theme" && rm "$HOME/.icons/default/index.theme"
 G4="$HOME/.config/gtk-4.0"
 for f in gtk.css gtk-dark.css assets; do
   if [ -L "$G4/$f" ] && readlink "$G4/$f" | grep -q Fetelabs-Desktop; then rm "$G4/$f"; fi
