@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+# Fetelabs: permanently skip the Zorin OS extras that aren't used on this desktop.
+#
+# Uninstalls the packages below and pins them (Pin-Priority -1) so no Zorin update or
+# metapackage can install them again. Refuses to run if apt would also take anything the
+# desktop needs (the Zorin session, Zorin Appearance, the extensions still in use).
+#
+#   sudo fetelabs-zorin-skip          (or pkexec)
+#   sudo fetelabs-zorin-skip --undo   remove the pin; the packages can be installed again
+set -euo pipefail
+
+SKIP=(
+  gnome-shell-extension-zorin-desktop-cube
+  gnome-shell-extension-zorin-magic-lamp-effect
+  gnome-shell-extension-zorin-window-move-effect
+  gnome-shell-extension-zorin-screen-keyboard-button
+  zorin-connect
+  gnome-shell-extension-zorin-connect
+  gnome-shell-extension-zorin-connect-browsers
+  zorin-os-census
+  webapp-manager
+  gnome-tour
+  zorin-gnome-tour-autostart
+  zorin-os-tour-video
+  zorin-os-upgrader
+  zorin-os-wallpapers-solid
+)
+PROTECTED=(
+  zorin-desktop-session zorin-os-desktop zorin-os-default-settings zorin-appearance
+  gnome-shell xwayland gdm3
+  gnome-shell-extension-zorin-menu gnome-shell-extension-zorin-desktop-icons
+  gnome-shell-extension-zorin-appindicator gnome-shell-extension-zorin-tiling-shell
+  gnome-shell-extension-zorin-spatial-window-switcher
+)
+PIN=/etc/apt/preferences.d/fetelabs-skip-zorin
+
+[ "$(id -u)" = 0 ] || { echo "run with sudo or pkexec" >&2; exit 1; }
+
+if [ "${1:-}" = "--undo" ]; then
+  rm -f "$PIN"
+  echo "pin removed; the skipped Zorin packages can be installed again"
+  exit 0
+fi
+
+installed=()
+for p in "${SKIP[@]}"; do
+  dpkg-query -W -f='${Status}' "$p" 2>/dev/null | grep -q "install ok installed" && installed+=("$p")
+done
+
+if [ ${#installed[@]} -gt 0 ]; then
+  plan=$(apt-get -s -o APT::Get::AutomaticRemove=false remove "${installed[@]}" | awk '/^Remv/{print $2}')
+  for p in "${PROTECTED[@]}"; do
+    if grep -qx "$p" <<<"$plan"; then
+      echo "ABORT: removing these would also remove $p. Nothing was changed." >&2
+      exit 2
+    fi
+  done
+  extra=$(apt-get -s -o APT::Get::AutomaticRemove=false remove "${installed[@]}" | awk '/^Inst/{print $2}')
+  if [ -n "$extra" ]; then
+    echo "ABORT: apt wants to install replacements ($extra). Nothing was changed." >&2
+    exit 2
+  fi
+  echo "Removing: ${installed[*]}"
+  DEBIAN_FRONTEND=noninteractive apt-get remove -y -o APT::Get::AutomaticRemove=false "${installed[@]}"
+else
+  echo "Nothing left to remove."
+fi
+
+{
+  echo "# Fetelabs: Zorin extras skipped for good. Undo: fetelabs-zorin-skip --undo"
+  for p in "${SKIP[@]}"; do
+    printf 'Package: %s\nPin: version *\nPin-Priority: -1\n\n' "$p"
+  done
+} > "$PIN"
+echo "Pinned ${#SKIP[@]} packages in $PIN so updates never bring them back."
