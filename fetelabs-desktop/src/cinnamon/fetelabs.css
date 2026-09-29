@@ -1,0 +1,30 @@
+
+/* =====================================================================
+ * Fetelabs Desktop layer (Cinnamon / Linux Mint)
+ * ===================================================================== */
+#panel:highlight {
+  background-color: rgba(255, 46, 136, 0.45);
+}
+
+.panel-launcher:hover,
+.grouped-window-list-item-box:hover,
+.window-list-item-box:hover {
+  background-color: rgba(31, 181, 168, 0.16);
+}
+
+.grouped-window-list-item-box:focus,
+.window-list-item-box:focus,
+.grouped-window-list-item-box:active,
+.window-list-item-box:active {
+  background-color: rgba(31, 181, 168, 0.30);
+}
+
+.slider {
+  -slider-active-background-color: #1FB5A8;
+}
+
+.calendar-today {
+  background-color: #1FB5A8;
+  color: #0E0818;
+  font-weight: bold;
+}

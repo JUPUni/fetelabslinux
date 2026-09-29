@@ -1,0 +1,306 @@
+#!/usr/bin/env python3
+"""Fetelabs Desktop: apply the theme and keep it applied.
+
+  fetelabs-desktop apply        set Fetelabs Desktop everywhere (apps, shell, icons, cursors)
+  fetelabs-desktop status       show what is set now and whether it matches
+  fetelabs-desktop guard        stay running; if anything (Zorin Appearance, Mint Themes,
+                                a light/dark toggle, an update) switches the look away,
+                                put it back. Run by fetelabs-desktop-guard.service
+  fetelabs-desktop guard-off    stop and disable the guard (lets you pick other themes)
+
+Works on GNOME (Zorin OS, Ubuntu, Pop), Cinnamon (Linux Mint), MATE and Xfce.
+"""
+import os
+import shutil
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+from gi.repository import Gio, GLib
+
+THEME = "Fetelabs-Desktop"
+ICONS = "Fetelabs-Desktop"
+CURSORS = "Fetelabs-Desktop-Cursors"
+BUTTONS = "close,minimize,maximize:"
+
+HOME = Path.home()
+DATA = Path(GLib.get_user_data_dir())
+CONFIG = Path(GLib.get_user_config_dir())
+THEME_DIRS = [DATA / "themes", HOME / ".themes", Path("/usr/share/themes")]
+ICON_DIRS = [DATA / "icons", HOME / ".icons", Path("/usr/share/icons")]
+SERVICE = "fetelabs-desktop-guard.service"
+
+
+def log(msg):
+    print(f"fetelabs-desktop: {msg}", flush=True)
+
+
+def find(dirs, name, probe=""):
+    for d in dirs:
+        if (d / name / probe).exists():
+            return d / name
+    return None
+
+
+def schema(schema_id):
+    src = Gio.SettingsSchemaSource.get_default()
+    return src.lookup(schema_id, True) if src else None
+
+
+def settings(schema_id):
+    return Gio.Settings(schema_id=schema_id) if schema(schema_id) else None
+
+
+# (schema, key, value) that make up the look, per desktop. Only schemas that exist are used,
+# so one list serves every distro.
+def wanted():
+    w = [
+        ("org.gnome.desktop.interface", "gtk-theme", THEME),
+        ("org.gnome.desktop.interface", "icon-theme", ICONS),
+        ("org.gnome.desktop.interface", "cursor-theme", CURSORS),
+        ("org.gnome.desktop.interface", "color-scheme", "prefer-dark"),
+        ("org.gnome.desktop.wm.preferences", "theme", THEME),
+        ("org.gnome.shell.extensions.user-theme", "name", THEME),
+        # Linux Mint (Cinnamon)
+        ("org.cinnamon.desktop.interface", "gtk-theme", THEME),
+        ("org.cinnamon.desktop.interface", "icon-theme", ICONS),
+        ("org.cinnamon.desktop.interface", "cursor-theme", CURSORS),
+        ("org.cinnamon.desktop.wm.preferences", "theme", THEME),
+        ("org.cinnamon.theme", "name", THEME),
+        ("org.x.apps.portal", "color-scheme", "prefer-dark"),
+        # MATE
+        ("org.mate.interface", "gtk-theme", THEME),
+        ("org.mate.interface", "icon-theme", ICONS),
+        ("org.mate.peripherals-mouse", "cursor-theme", CURSORS),
+        ("org.mate.Marco.general", "theme", THEME),
+    ]
+    out = []
+    for sid, key, val in w:
+        s = schema(sid)
+        if s and s.has_key(key):
+            if key == "color-scheme":
+                rng = s.get_key(key).get_range().unpack()
+                if rng[0] == "enum" and val not in rng[1]:
+                    continue
+            out.append((sid, key, val))
+    return out
+
+
+XFCE = [
+    ("xsettings", "/Net/ThemeName", THEME),
+    ("xsettings", "/Net/IconThemeName", ICONS),
+    ("xsettings", "/Gtk/CursorThemeName", CURSORS),
+    ("xfwm4", "/general/theme", THEME),
+]
+
+
+def xfconf_get(ch, prop):
+    r = subprocess.run(["xfconf-query", "-c", ch, "-p", prop], capture_output=True, text=True)
+    return r.stdout.strip() if r.returncode == 0 else None
+
+
+def gsettings_value(sid, key):
+    s = settings(sid)
+    v = s.get_value(key).unpack()
+    return v
+
+
+def drift():
+    """Settings that differ from Fetelabs Desktop."""
+    bad = [(sid, key, gsettings_value(sid, key), val) for sid, key, val in wanted()
+           if gsettings_value(sid, key) != val]
+    if shutil.which("xfconf-query") and os.environ.get("XDG_CURRENT_DESKTOP", "").upper().find("XFCE") >= 0:
+        bad += [(f"xfconf:{c}", p, xfconf_get(c, p), v) for c, p, v in XFCE if xfconf_get(c, p) != v]
+    g4 = CONFIG / "gtk-4.0" / "gtk.css"
+    if not (g4.is_symlink() and f"/{THEME}/" in os.readlink(g4)):
+        bad.append(("gtk-4.0", "gtk.css", os.readlink(g4) if g4.is_symlink() else None, THEME))
+    return bad
+
+
+# ------------------------------------------------------------------ apply
+
+def ini_set(path, section, values):
+    """Update keys in a GTK settings.ini without dropping the user's other keys."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lines = path.read_text().splitlines() if path.exists() else []
+    if f"[{section}]" not in lines:
+        lines = [f"[{section}]"] + lines
+    for k, v in values.items():
+        for i, l in enumerate(lines):
+            if l.split("=", 1)[0].strip() == k:
+                lines[i] = f"{k}={v}"
+                break
+        else:
+            idx = lines.index(f"[{section}]") + 1
+            lines.insert(idx, f"{k}={v}")
+    path.write_text("\n".join(lines) + "\n")
+
+
+def link_gtk4(theme_dir):
+    """libadwaita apps ignore gtk-theme; they read ~/.config/gtk-4.0/gtk.css. Point it here."""
+    g4 = CONFIG / "gtk-4.0"
+    g4.mkdir(parents=True, exist_ok=True)
+    src = theme_dir / "gtk-4.0"
+    for name in ("gtk.css", "gtk-dark.css", "assets"):
+        target, dest = src / name, g4 / name
+        if dest.is_symlink() or not dest.exists():
+            if dest.is_symlink() and Path(os.readlink(dest)) == target:
+                continue
+            if dest.is_symlink():
+                dest.unlink()
+        else:
+            backup = dest.with_name(dest.name + ".before-fetelabs")
+            if not backup.exists():
+                dest.rename(backup)
+            elif dest.is_dir():
+                shutil.rmtree(dest)
+            else:
+                dest.unlink()
+        dest.symlink_to(target)
+    wa = g4 / "windows-assets"
+    if wa.is_symlink() or not wa.exists():
+        if wa.is_symlink():
+            wa.unlink()
+        wa.symlink_to("assets")
+
+
+def default_cursor():
+    """X11 apps and some toolkits read ~/.icons/default before any setting."""
+    d = HOME / ".icons" / "default"
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "index.theme").write_text(f"[Icon Theme]\nName=Default\nInherits={CURSORS}\n")
+
+
+def enable_user_theme():
+    s = settings("org.gnome.shell")
+    if not s:
+        return
+    uuid = "user-theme@gnome-shell-extensions.gcampax.github.com"
+    en = list(s.get_strv("enabled-extensions"))
+    if uuid not in en:
+        s.set_strv("enabled-extensions", en + [uuid])
+    dis = [u for u in s.get_strv("disabled-extensions") if u != uuid]
+    s.set_strv("disabled-extensions", dis)
+
+
+def flatpak_access():
+    if not shutil.which("flatpak"):
+        return
+    subprocess.run(["flatpak", "override", "--user",
+                    "--filesystem=xdg-data/themes:ro", "--filesystem=xdg-data/icons:ro",
+                    "--filesystem=~/.themes:ro", "--filesystem=~/.icons:ro",
+                    "--filesystem=xdg-config/gtk-3.0:ro", "--filesystem=xdg-config/gtk-4.0:ro"],
+                   capture_output=True)
+
+
+def apply(quiet=False):
+    theme_dir = find(THEME_DIRS, THEME, "index.theme")
+    if not theme_dir or not find(ICON_DIRS, ICONS, "index.theme") or not find(ICON_DIRS, CURSORS, "cursors"):
+        log("Fetelabs Desktop is not installed (run install.sh)")
+        return 1
+    enable_user_theme()
+    for sid, key, val in wanted():
+        s = settings(sid)
+        if s.get_value(key).unpack() != val:
+            s.set_value(key, GLib.Variant(s.get_value(key).get_type_string(), val))
+    for sid in ("org.gnome.desktop.wm.preferences", "org.cinnamon.desktop.wm.preferences"):
+        s = settings(sid)
+        if s and s.get_string("button-layout") != BUTTONS and not os.environ.get("FETELABS_KEEP_BUTTONS"):
+            s.set_string("button-layout", BUTTONS)
+    if shutil.which("xfconf-query") and "XFCE" in os.environ.get("XDG_CURRENT_DESKTOP", "").upper():
+        for c, p, v in XFCE:
+            if xfconf_get(c, p) != v:
+                subprocess.run(["xfconf-query", "-c", c, "-p", p, "-s", v])
+    for gv in ("gtk-3.0", "gtk-4.0"):
+        ini_set(CONFIG / gv / "settings.ini", "Settings", {
+            "gtk-theme-name": THEME, "gtk-icon-theme-name": ICONS,
+            "gtk-cursor-theme-name": CURSORS, "gtk-application-prefer-dark-theme": "1",
+            "gtk-decoration-layout": BUTTONS})
+    gtk2 = HOME / ".gtkrc-2.0"
+    lines = [l for l in (gtk2.read_text().splitlines() if gtk2.exists() else [])
+             if not l.startswith(("gtk-theme-name", "gtk-icon-theme-name", "gtk-cursor-theme-name"))]
+    lines += [f'gtk-theme-name="{THEME}"', f'gtk-icon-theme-name="{ICONS}"', f'gtk-cursor-theme-name="{CURSORS}"']
+    gtk2.write_text("\n".join(lines) + "\n")
+    link_gtk4(theme_dir)
+    default_cursor()
+    flatpak_access()
+    Gio.Settings.sync()
+    if not quiet:
+        log(f"applied ({theme_dir})")
+    return 0
+
+
+def status():
+    theme_dir = find(THEME_DIRS, THEME, "index.theme")
+    print(f"theme dir : {theme_dir or 'NOT INSTALLED'}")
+    for sid, key, val in wanted():
+        cur = gsettings_value(sid, key)
+        print(f"{'ok ' if cur == val else 'OFF'} {sid} {key} = {cur}")
+    g4 = CONFIG / "gtk-4.0" / "gtk.css"
+    print(f"{'ok ' if g4.is_symlink() and THEME in os.readlink(g4) else 'OFF'} ~/.config/gtk-4.0/gtk.css -> "
+          f"{os.readlink(g4) if g4.is_symlink() else g4.exists() and 'file' or 'missing'}")
+    r = subprocess.run(["systemctl", "--user", "is-active", SERVICE], capture_output=True, text=True)
+    print(f"guard     : {r.stdout.strip() or 'n/a'}")
+    return 0 if not drift() else 2
+
+
+# ------------------------------------------------------------------ guard
+
+def guard():
+    apply()
+    loop = GLib.MainLoop()
+    pending = {"id": 0}
+    watched = []
+
+    def recheck():
+        pending["id"] = 0
+        bad = drift()
+        if bad:
+            for sid, key, cur, val in bad:
+                log(f"{sid} {key} changed to {cur!r}; restoring {val!r}")
+            apply(quiet=True)
+        return False
+
+    def changed(*_):
+        # debounce: theme pickers write several keys in a row
+        if pending["id"]:
+            GLib.source_remove(pending["id"])
+        pending["id"] = GLib.timeout_add(800, recheck)
+
+    for sid in sorted({sid for sid, _, _ in wanted()}):
+        s = settings(sid)
+        s.connect("changed", changed)
+        watched.append(s)
+    # libadwaita override files (a theme switcher may relink them)
+    mon = Gio.File.new_for_path(str(CONFIG / "gtk-4.0")).monitor_directory(Gio.FileMonitorFlags.NONE, None)
+    mon.connect("changed", lambda *a: changed())
+    watched.append(mon)
+    # a newly installed schema (e.g. user-theme turned on later) needs the full apply
+    GLib.timeout_add_seconds(30, lambda: (changed(), False)[1])
+    log(f"guarding {len(watched) - 1} settings groups")
+    try:
+        loop.run()
+    except KeyboardInterrupt:
+        pass
+    return 0
+
+
+def guard_off():
+    subprocess.run(["systemctl", "--user", "disable", "--now", SERVICE])
+    log("guard stopped; other themes can be picked now. `fetelabs-desktop apply` + "
+        f"`systemctl --user enable --now {SERVICE}` brings it back")
+    return 0
+
+
+def main():
+    cmd = sys.argv[1] if len(sys.argv) > 1 else "status"
+    fn = {"apply": apply, "status": status, "guard": guard, "guard-off": guard_off}.get(cmd)
+    if not fn:
+        print(__doc__)
+        return 1
+    return fn()
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22">
+  <!-- Fetelabs Desktop: download stack emblem (teal disc, cream arrow) -->
+  <circle cx="11" cy="11" r="10" fill="#1FB5A8"/>
+  <circle cx="11" cy="11" r="10" fill="none" stroke="#0E0818" stroke-opacity=".35"/>
+  <path d="M11 5v8m-3.5-3.5L11 13l3.5-3.5M6.5 16h9" fill="none" stroke="#FFF6E6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

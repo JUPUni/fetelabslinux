@@ -1,0 +1,114 @@
+
+/* =====================================================================
+ * Fetelabs Desktop layer (GNOME Shell)
+ * Brand: ink #0E0818, glass #2A1F3D, cream #FFF6E6, teal #1FB5A8,
+ *        lime #9BE22D, Soca Pink #FF2E88, gold #F4B400
+ * ===================================================================== */
+
+/* Taskbar compatibility. Fetelabs Task Bar, Zorin Taskbar and Dash to Panel
+ * all reuse #panel as the taskbar; its height comes from the extension, so
+ * the theme must not force one (the upstream 28px squashed it). */
+#panel {
+  box-shadow: none;
+}
+
+#panel .panel-button.clock-display {
+  -natural-hpadding: 0;
+  -minimum-hpadding: 0;
+}
+
+#panel .panel-button.clock-display .clock {
+  padding: 0 4px !important;
+}
+
+/* Taskbar app icons (Fetelabs Task Bar / Zorin Taskbar / Dash to Panel) */
+#dashtopanelScrollview .overview-tile .dtp-container,
+#zorintaskbarScrollview .overview-tile .dtp-container,
+#dashtopanelScrollview .overview-tile .overview-icon,
+#zorintaskbarScrollview .overview-tile .overview-icon {
+  transition-duration: 150ms;
+}
+
+#dashtopanelScrollview .overview-tile:hover .dtp-container,
+#zorintaskbarScrollview .overview-tile:hover .dtp-container,
+#dashtopanelScrollview .overview-tile:selected .dtp-container,
+#zorintaskbarScrollview .overview-tile:selected .dtp-container {
+  background-color: rgba(31, 181, 168, 0.16);
+}
+
+#dashtopanelScrollview .overview-tile:focus .dtp-container,
+#zorintaskbarScrollview .overview-tile:focus .dtp-container,
+#dashtopanelScrollview .overview-tile.focused .overview-icon,
+#zorintaskbarScrollview .overview-tile.focused .overview-icon {
+  background-color: rgba(31, 181, 168, 0.24);
+}
+
+#dashtopanelScrollview .overview-tile:active .dtp-container,
+#zorintaskbarScrollview .overview-tile:active .dtp-container,
+#dashtopanelScrollview .overview-tile:checked .dtp-container,
+#zorintaskbarScrollview .overview-tile:checked .dtp-container {
+  background-color: rgba(31, 181, 168, 0.32);
+}
+
+#dashtopanelScrollview .notification-badge,
+#zorintaskbarScrollview .notification-badge {
+  color: #0E0818;
+  background-color: #FF2E88;
+  background-gradient-direction: vertical;
+  background-gradient-start: #FF5AA2;
+  background-gradient-end: #FF2E88;
+  box-shadow: 0 2px 4px 0 rgba(255, 46, 136, 0.3);
+  border-radius: 1em;
+  font-weight: bold;
+  text-align: center;
+}
+
+#zorintaskbarThumbnailList .popup-menu-item:hover,
+#zorintaskbarThumbnailList .popup-menu-item:focus {
+  background-color: rgba(31, 181, 168, 0.16);
+}
+
+/* Workspace switcher pips */
+.ws-switcher-indicator {
+  background-color: rgba(31, 181, 168, 0.45);
+  padding: 2.6666666667px;
+  margin: 13.3333333333px;
+  border-radius: 32px;
+}
+
+.ws-switcher-indicator:active {
+  background-color: #1FB5A8;
+  padding: 5.3333333333px;
+  margin: 10.6666666667px;
+}
+
+/* Fetelabs sparkle: teal-to-pink focus underline on the active workspace dot,
+ * gold "today" marker, lime success toggles. */
+#panel .panel-button#panelActivities .workspace-dot:active,
+#panel .panel-button#panelActivities:overview .workspace-dot {
+  background-color: #1FB5A8;
+}
+
+.calendar .calendar-today,
+.calendar .calendar-today:selected {
+  background-color: #1FB5A8;
+  color: #0E0818;
+  font-weight: 800;
+}
+
+.quick-toggle:checked,
+.quick-menu-toggle .quick-toggle:checked {
+  background-gradient-direction: horizontal;
+  background-gradient-start: #1FB5A8;
+  background-gradient-end: #17968B;
+}
+
+.slider {
+  -barlevel-active-background-color: #1FB5A8;
+  -barlevel-overdrive-color: #FF2E88;
+}
+
+.message .message-title,
+.notification-banner .message-title {
+  color: #FFF6E6;
+}

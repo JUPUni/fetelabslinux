@@ -1,0 +1,13 @@
+[Unit]
+Description=Fetelabs Desktop: keep the Fetelabs theme applied
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/fetelabs-desktop guard
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical-session.target

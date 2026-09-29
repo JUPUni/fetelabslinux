@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Fetelabs Desktop
+Comment=Apply the Fetelabs Desktop theme at login and keep it applied
+Exec=sh -c '"$HOME/.local/bin/fetelabs-desktop" guard'
+NoDisplay=true
+X-GNOME-Autostart-enabled=true
+X-GNOME-Autostart-Phase=Initialization
