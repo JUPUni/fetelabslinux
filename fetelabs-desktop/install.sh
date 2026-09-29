@@ -3,7 +3,7 @@
 #
 #   ./install.sh                     install for this user and make it the default look
 #   ./install.sh --system            install into /usr/share for every user (asks for sudo)
-#   ./install.sh --with-extensions   also install Fetelabs Task Bar + Water Panel (GNOME 46+)
+#   ./install.sh --with-extensions   also install Fetelabs Task Bar, Water Panel built in (GNOME 46+)
 #   ./install.sh --no-guard          do not keep the theme enforced after install
 set -euo pipefail
 
@@ -55,7 +55,7 @@ if [ "$EXTENSIONS" = 1 ]; then
       say "extension $(basename "$z" .shell-extension.zip)"
       gnome-extensions install --force "$z"
     done
-    say "extensions installed; enable them after logging back in (Extensions app)"
+    say "extensions installed; enable Fetelabs Task Bar after logging back in (Extensions app)"
   else
     say "skipping extensions (needs GNOME Shell 46+)"
   fi

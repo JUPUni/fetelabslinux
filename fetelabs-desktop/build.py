@@ -22,7 +22,7 @@ from pathlib import Path
 
 from PIL import Image
 
-VERSION = "1.0.2"
+VERSION = "1.1.0"
 ROOT = Path(__file__).resolve().parent
 UP = ROOT / "upstream"
 SRC = ROOT / "src"

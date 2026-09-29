@@ -21,7 +21,7 @@ tar xf fetelabs-desktop-*.tar.xz
 cd fetelabs-desktop-*/
 ./install.sh                     # for your user, and make it the default look
 ./install.sh --system            # for every user (asks for sudo)
-./install.sh --with-extensions   # also add Fetelabs Task Bar and Water Panel (GNOME 46+)
+./install.sh --with-extensions   # also add Fetelabs Task Bar, Water Panel built in (GNOME 46+)
 ```
 
 `install.sh` works out which desktop you're on (GNOME, Cinnamon, MATE or Xfce) and sets the app
@@ -45,9 +45,11 @@ To remove everything, run `./uninstall.sh`. Any GTK 4 files the installer replac
 
 ## Taskbar and visualizer (GNOME)
 
-On GNOME the theme is made to run with **Fetelabs Task Bar** (a floating taskbar) and **Water Panel**
-(the taskbar doubles as a liquid music visualizer). Both are in `extensions/`, and
-`--with-extensions` installs them.
+On GNOME the theme is made to run with **Fetelabs Task Bar**, a floating taskbar with **Water Panel**
+built in (the bar doubles as a liquid music visualizer; tune or turn it off on the Water tab of its
+settings). It is in `extensions/`, and `--with-extensions` installs it. The visualizer needs
+`python3-numpy` and `pulseaudio-utils`. Water Panel on its own, for Zorin Taskbar or Dash to Panel,
+is on extensions.gnome.org and fetelabs.ai.
 
 The upstream shell theme forced the top bar to 28px. Any taskbar that reuses the GNOME panel
 (Fetelabs Task Bar, Zorin Taskbar, Dash to Panel) sits in that same panel, so its background and
