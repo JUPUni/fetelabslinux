@@ -22,7 +22,7 @@ from pathlib import Path
 
 from PIL import Image
 
-VERSION = "1.1.0"
+VERSION = "1.1.1"
 ROOT = Path(__file__).resolve().parent
 UP = ROOT / "upstream"
 SRC = ROOT / "src"
@@ -409,7 +409,8 @@ def package():
         shutil.copy(ROOT / f, stage / f)
     shutil.copytree(ROOT / "bin", stage / "bin", ignore=shutil.ignore_patterns("__pycache__"))
     shutil.copytree(ROOT / "packaging", stage / "packaging")
-    shutil.copytree(ROOT / "extensions", stage / "extensions")
+    if (ROOT / "extensions").is_dir():
+        shutil.copytree(ROOT / "extensions", stage / "extensions")
     shutil.copytree(UP / "licenses", stage / "licenses")
     tar = DIST / f"{pkg}.tar.xz"
     with tarfile.open(tar, "w:xz") as tf:

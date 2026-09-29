@@ -145,7 +145,11 @@ def ini_set(path, section, values):
         else:
             idx = lines.index(f"[{section}]") + 1
             lines.insert(idx, f"{k}={v}")
-    path.write_text("\n".join(lines) + "\n")
+    new = "\n".join(lines) + "\n"
+    # Only write on a real change: the guard watches these folders, so a
+    # needless write would wake it again.
+    if not path.exists() or path.read_text() != new:
+        path.write_text(new)
 
 
 def link_gtk4(theme_dir):
@@ -228,17 +232,19 @@ def apply(quiet=False):
     if shutil.which("xfconf-query") and "XFCE" in os.environ.get("XDG_CURRENT_DESKTOP", "").upper():
         for c, p, v in XFCE:
             if xfconf_get(c, p) != v:
-                subprocess.run(["xfconf-query", "-c", c, "-p", p, "-s", v])
+                subprocess.run(["xfconf-query", "-c", c, "-p", p, "-n", "-t", "string", "-s", v])
+    ini = {"gtk-theme-name": THEME, "gtk-icon-theme-name": ICONS,
+           "gtk-cursor-theme-name": CURSORS, "gtk-application-prefer-dark-theme": "1"}
+    if not os.environ.get("FETELABS_KEEP_BUTTONS"):
+        ini["gtk-decoration-layout"] = BUTTONS
     for gv in ("gtk-3.0", "gtk-4.0"):
-        ini_set(CONFIG / gv / "settings.ini", "Settings", {
-            "gtk-theme-name": THEME, "gtk-icon-theme-name": ICONS,
-            "gtk-cursor-theme-name": CURSORS, "gtk-application-prefer-dark-theme": "1",
-            "gtk-decoration-layout": BUTTONS})
+        ini_set(CONFIG / gv / "settings.ini", "Settings", ini)
     gtk2 = HOME / ".gtkrc-2.0"
     lines = [l for l in (gtk2.read_text().splitlines() if gtk2.exists() else [])
              if not l.startswith(("gtk-theme-name", "gtk-icon-theme-name", "gtk-cursor-theme-name"))]
     lines += [f'gtk-theme-name="{THEME}"', f'gtk-icon-theme-name="{ICONS}"', f'gtk-cursor-theme-name="{CURSORS}"']
-    gtk2.write_text("\n".join(lines) + "\n")
+    if not gtk2.exists() or gtk2.read_text() != "\n".join(lines) + "\n":
+        gtk2.write_text("\n".join(lines) + "\n")
     link_gtk4(theme_dir)
     default_cursor()
     flatpak_access()
@@ -270,13 +276,26 @@ def guard():
     pending = {"id": 0}
     watched = []
 
+    stuck = {"bad": None}
+
     def recheck():
         pending["id"] = 0
         bad = drift()
-        if bad:
+        if not bad:
+            stuck["bad"] = None
+        elif bad == stuck["bad"]:
+            # The last apply could not fix this (a locked key, a missing
+            # property): say so once instead of re-applying in a loop.
+            pass
+        else:
             for sid, key, cur, val in bad:
                 log(f"{sid} {key} changed to {cur!r}; restoring {val!r}")
             apply(quiet=True)
+            still = drift()
+            if still:
+                for sid, key, cur, val in still:
+                    log(f"cannot restore {sid} {key} (still {cur!r}); leaving it until it changes again")
+            stuck["bad"] = still or None
         return False
 
     def changed(*_):

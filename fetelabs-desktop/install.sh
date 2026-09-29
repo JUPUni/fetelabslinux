@@ -52,6 +52,7 @@ say "command $BIN/fetelabs-desktop"
 if [ "$EXTENSIONS" = 1 ]; then
   if command -v gnome-extensions >/dev/null && [ -d "$HERE/extensions" ]; then
     for z in "$HERE"/extensions/*.zip; do
+      [ -e "$z" ] || continue   # no zips: nothing to install
       say "extension $(basename "$z" .shell-extension.zip)"
       gnome-extensions install --force "$z"
     done
