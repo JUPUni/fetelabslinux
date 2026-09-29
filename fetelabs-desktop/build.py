@@ -228,7 +228,7 @@ GtkTheme={NAME}
 MetacityTheme={NAME}
 IconTheme={ICONS}
 CursorTheme={CURSORS}
-ButtonLayout=close,minimize,maximize:menu
+ButtonLayout=menu:minimize,maximize,close
 """
 
 
