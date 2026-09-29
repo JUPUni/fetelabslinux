@@ -23,34 +23,43 @@
 
 /* Taskbar app icons (Fetelabs Task Bar / Zorin Taskbar / Dash to Panel) */
 #dashtopanelScrollview .overview-tile .dtp-container,
+#fetelabstaskbarScrollview .overview-tile .dtp-container,
 #zorintaskbarScrollview .overview-tile .dtp-container,
 #dashtopanelScrollview .overview-tile .overview-icon,
+#fetelabstaskbarScrollview .overview-tile .overview-icon,
 #zorintaskbarScrollview .overview-tile .overview-icon {
   transition-duration: 150ms;
 }
 
 #dashtopanelScrollview .overview-tile:hover .dtp-container,
+#fetelabstaskbarScrollview .overview-tile:hover .dtp-container,
 #zorintaskbarScrollview .overview-tile:hover .dtp-container,
 #dashtopanelScrollview .overview-tile:selected .dtp-container,
+#fetelabstaskbarScrollview .overview-tile:selected .dtp-container,
 #zorintaskbarScrollview .overview-tile:selected .dtp-container {
   background-color: rgba(31, 181, 168, 0.16);
 }
 
 #dashtopanelScrollview .overview-tile:focus .dtp-container,
+#fetelabstaskbarScrollview .overview-tile:focus .dtp-container,
 #zorintaskbarScrollview .overview-tile:focus .dtp-container,
 #dashtopanelScrollview .overview-tile.focused .overview-icon,
+#fetelabstaskbarScrollview .overview-tile.focused .overview-icon,
 #zorintaskbarScrollview .overview-tile.focused .overview-icon {
   background-color: rgba(31, 181, 168, 0.24);
 }
 
 #dashtopanelScrollview .overview-tile:active .dtp-container,
+#fetelabstaskbarScrollview .overview-tile:active .dtp-container,
 #zorintaskbarScrollview .overview-tile:active .dtp-container,
 #dashtopanelScrollview .overview-tile:checked .dtp-container,
+#fetelabstaskbarScrollview .overview-tile:checked .dtp-container,
 #zorintaskbarScrollview .overview-tile:checked .dtp-container {
   background-color: rgba(31, 181, 168, 0.32);
 }
 
 #dashtopanelScrollview .notification-badge,
+#fetelabstaskbarScrollview .notification-badge,
 #zorintaskbarScrollview .notification-badge {
   color: #0E0818;
   background-color: #FF2E88;
@@ -63,7 +72,9 @@
   text-align: center;
 }
 
+#fetelabstaskbarThumbnailList .popup-menu-item:hover,
 #zorintaskbarThumbnailList .popup-menu-item:hover,
+#fetelabstaskbarThumbnailList .popup-menu-item:focus,
 #zorintaskbarThumbnailList .popup-menu-item:focus {
   background-color: rgba(31, 181, 168, 0.16);
 }
