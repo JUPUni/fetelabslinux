@@ -75,6 +75,12 @@ def wanted():
         ("org.mate.peripherals-mouse", "cursor-theme", CURSORS),
         ("org.mate.Marco.general", "theme", THEME),
     ]
+    # Window buttons on the right, Windows-style. Guarded like the theme, so a
+    # settings app or update that moves them gets put back at once.
+    if not os.environ.get("FETELABS_KEEP_BUTTONS"):
+        w += [("org.gnome.desktop.wm.preferences", "button-layout", BUTTONS),
+              ("org.cinnamon.desktop.wm.preferences", "button-layout", BUTTONS),
+              ("org.mate.Marco.general", "button-layout", BUTTONS)]
     out = []
     for sid, key, val in w:
         s = schema(sid)
@@ -115,6 +121,11 @@ def drift():
     g4 = CONFIG / "gtk-4.0" / "gtk.css"
     if not (g4.is_symlink() and f"/{THEME}/" in os.readlink(g4)):
         bad.append(("gtk-4.0", "gtk.css", os.readlink(g4) if g4.is_symlink() else None, THEME))
+    for gv in ("gtk-3.0", "gtk-4.0"):
+        ini = CONFIG / gv / "settings.ini"
+        if not os.environ.get("FETELABS_KEEP_BUTTONS") and f"gtk-decoration-layout={BUTTONS}" not in (
+                ini.read_text().splitlines() if ini.exists() else []):
+            bad.append((gv, "settings.ini gtk-decoration-layout", None, BUTTONS))
     return bad
 
 
@@ -214,10 +225,6 @@ def apply(quiet=False):
         s = settings(sid)
         if s.get_value(key).unpack() != val:
             s.set_value(key, GLib.Variant(s.get_value(key).get_type_string(), val))
-    for sid in ("org.gnome.desktop.wm.preferences", "org.cinnamon.desktop.wm.preferences"):
-        s = settings(sid)
-        if s and s.get_string("button-layout") != BUTTONS and not os.environ.get("FETELABS_KEEP_BUTTONS"):
-            s.set_string("button-layout", BUTTONS)
     if shutil.which("xfconf-query") and "XFCE" in os.environ.get("XDG_CURRENT_DESKTOP", "").upper():
         for c, p, v in XFCE:
             if xfconf_get(c, p) != v:
@@ -282,13 +289,16 @@ def guard():
         s = settings(sid)
         s.connect("changed", changed)
         watched.append(s)
-    # libadwaita override files (a theme switcher may relink them)
-    mon = Gio.File.new_for_path(str(CONFIG / "gtk-4.0")).monitor_directory(Gio.FileMonitorFlags.NONE, None)
-    mon.connect("changed", lambda *a: changed())
-    watched.append(mon)
+    # libadwaita override files (a theme switcher may relink them) and both
+    # settings.ini files (button layout, theme names)
+    for gv in ("gtk-3.0", "gtk-4.0"):
+        (CONFIG / gv).mkdir(parents=True, exist_ok=True)
+        mon = Gio.File.new_for_path(str(CONFIG / gv)).monitor_directory(Gio.FileMonitorFlags.NONE, None)
+        mon.connect("changed", lambda *a: changed())
+        watched.append(mon)
     # a newly installed schema (e.g. user-theme turned on later) needs the full apply
     GLib.timeout_add_seconds(30, lambda: (changed(), False)[1])
-    log(f"guarding {len(watched) - 1} settings groups")
+    log(f"guarding {len(watched) - 2} settings groups and the GTK settings folders")
     try:
         loop.run()
     except KeyboardInterrupt:

@@ -22,7 +22,7 @@ from pathlib import Path
 
 from PIL import Image
 
-VERSION = "1.0.1"
+VERSION = "1.0.2"
 ROOT = Path(__file__).resolve().parent
 UP = ROOT / "upstream"
 SRC = ROOT / "src"
@@ -407,7 +407,7 @@ def package():
     shutil.copytree(DIST / "icons", stage / "icons", symlinks=True)
     for f in ("install.sh", "uninstall.sh", "README.md", "CREDITS.md", "LICENSE"):
         shutil.copy(ROOT / f, stage / f)
-    shutil.copytree(ROOT / "bin", stage / "bin")
+    shutil.copytree(ROOT / "bin", stage / "bin", ignore=shutil.ignore_patterns("__pycache__"))
     shutil.copytree(ROOT / "packaging", stage / "packaging")
     shutil.copytree(ROOT / "extensions", stage / "extensions")
     shutil.copytree(UP / "licenses", stage / "licenses")
